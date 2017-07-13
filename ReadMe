@@ -5,3 +5,5 @@ Install
 3.1. http://server/ points on /path/to/project/html
 3.2. http://server/ajax/ is proxy for http://server:8080/ (8080 - default port for web.py)
 4. Run dynamic/main.py
+
+Changed
