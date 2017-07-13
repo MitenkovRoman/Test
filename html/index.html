@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="codebase/webix.css" type="text/css" media="screen" charset="utf-8">
+    <script src="codebase/webix.js" type="text/javascript" charset="utf-8"></script>
+    <title>TRex</title>
+  </head>
+  <body>
+    <style>
+        .ruler_row {
+          background-color: #095692;
+          color: white;
+        }
+        .webix_column > div:nth-child(2n) {
+            background-color: #F0F0F0;
+        }
+        .webix_column > div.webix_row_select:nth-child(2n) {
+          background-color:#a0a0a0;
+        }
+        .webix_el_toggle button{
+          background-color:grey !important;
+          border-color: gray !important;
+        }
+        .webix_el_box.webix_pressed button{
+          background-color:#095692 !important;
+          border-color:#095692 !important; 
+        }
+        div[view_id="section"]{
+            //возможно здесь должны быть стили для границы блоков
+        }
+    </style>
+    <script type="text/javascript" charset="utf-8">
+        var main_menu_tabbar = {
+          view:"tabbar",
+          multiview:true,
+          type:"top",
+          id:"main_tabbar",
+          options: [
+            { value: 'Реальный режим', id: 'real_main'},
+            { value: 'Автономный режим', id: 'auto_main'},
+            { value: 'Выгрузка в отчет', id: 'report_main'},
+            { value: 'Общие настройки', id: 'common_main'}
+          ]
+        };
+        var real_tabbar = {
+          view:"tabbar",
+          multiview:true,  
+          optionWidth: 100,
+          type:"top",
+          options: [
+            { value: 'Мониторинг', id: 'monitor_real'},
+            { value: 'Эмулятор', id: 'emulator_real'}
+          ]
+        };
+
+        var real_data = {
+          cells:[
+            {
+              id:'monitor_real',
+              cols: [
+                {
+                  width: 250,
+                  rows: [
+                    {
+                      rows:[
+                        {
+                          view:'label',
+                          //css:'ruler_row',
+                          label: "Найденные устройства:"
+                        },
+                        {
+                          id:"SSID_Tree",
+                          view:"tree",
+                          type:"lineTree",
+                          template:function(obj, common){
+                            if(obj.$level == 1) {
+                              return common.icon(obj, common) + "<span class='webix_icon fa-wifi'></span>"+"<span>"+obj.value+"</span>";
+                            }
+                            return common.icon(obj, common) + "<span class='webix_icon fa-mobile'></span>"+"<span>"+obj.value+"</span>"; 
+                          },
+                          data: [
+                          ]//,
+                          //select:true
+                        }
+                      ]
+                    },
+                    { view:"resizer" },
+                    {
+                      rows:[
+                        {
+                          view:'label',
+                          //css:'ruler_row',
+                          label: "Перехваченные SSID:"
+                        },
+                        {
+                          id:"SSID_list",
+                          view:"list",
+                          template:"<span class='webix_icon fa-wifi'>#value#",
+                          data: [
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                { view:"resizer" },
+                {
+                  rows: [
+                    {
+                      rows: [
+                        {
+                          cols: [
+                            {
+                              view:'label',
+                              id:'ap_label',
+                              label:"Точки доступа (0)"
+                            },
+                            {},
+                            {
+                                id: "monitoring-hidden-list",
+                                width: 520,
+                                cols: [
+                                    {
+                                        view:"button",
+                                        id: "Waterfall-btn",
+                                        value: "Водопад устройств"
+                                    },
+                                    {
+                                        view:"button",
+                                        id: "ShowLists-btn",
+                                        value: "Посмотреть списки"
+                                    },
+                                    {
+                                        view:"button",
+                                        id: "LightDevices-btn",
+                                        value: "Подсветка устройств"
+                                    },
+                                    {
+                                        view:"button",
+                                        id: "FieldsList-btn",
+                                        value: "Список полей"
+                                    }
+                                ]
+                            },
+                            { 
+                              view:"toggle",
+                              width:30,
+                              type:"iconButton",
+                              name:"monbutton",
+                              offIcon:"toggle-left",
+                              onIcon:"toggle-right",
+                              on:{
+                                'onItemClick': function(){
+                                    if ($$('monitoring-hidden-list').isVisible()){
+                                        $$('monitoring-hidden-list').hide();
+                                    }
+                                    else{
+                                        $$('monitoring-hidden-list').show();
+                                    }
+                                }
+                              }
+                            },
+                            { 
+                              view:"button",
+                              width:30,
+                              type:"iconButton",
+                              name:"monbutton",
+                              icon:"filter"
+                            },
+                            { 
+                              view:"toggle",
+                              width:30,
+                              type:"iconButton",
+                              id:"hide_ap_button",
+                              value:true,
+                              offIcon:"toggle-down",
+                              onIcon:"toggle-up",
+                              on:{
+                                'onItemClick': function(id){ 
+                                  if($$('APTable').isVisible()) {
+                                    $$('APTable').hide();
+                                    $$('CLTable').show();
+                                    $$('hide_cl_button').setValue(1);
+                                  } else {
+                                    $$('APTable').show();
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          id:"APTable",
+                          view:"datatable",
+                          columns:[
+                            { id: "SignalLevel", header:"Уровень сигнала", sort:"int",fillspace:true},
+                            { id: "SSID",  header:"Имя ТД", sort:"string",fillspace:true},
+                            { id: "MAC",  header:"MAC адрес", sort:"string",fillspace:true},
+                            { id: "Channel",  header:"Канал", sort:"int",fillspace:true},
+                            { id: "Manufactor",  header:"Производитель", sort:"string",fillspace:true},
+                            { id: "PacketsCount",  header:"Число пакетов", sort:"int",fillspace:true},
+                            { id: "TimeAppend",  header:"Первое появление", sort:"string",fillspace:true},
+                            { id: "since",  header:"Последняя активность", sort:"string",fillspace:true}
+                          ],
+                          resizeColumn:true,
+                          fillspace:true
+                        }
+                      ]
+                    },
+                    { view:"resizer" },
+                    {
+                      rows: [
+                        {
+                          cols: [
+                            {
+                              view:'label',
+                              id:'cl_label',
+                              label:"Клиенты (0)"
+                            },
+                            {},
+                            { 
+                              view:"toggle",
+                              width:30,
+                              type:"iconButton",
+                              name:"monbutton",
+                              offIcon:"toggle-left",
+                              onIcon:"toggle-right"
+                            },
+                            { 
+                              view:"button",
+                              width:30,
+                              type:"iconButton",
+                              name:"monbutton",
+                              icon:"filter"
+                            },
+                            { 
+                              view:"toggle",
+                              width:30,
+                              type:"iconButton",
+                              id:"hide_cl_button",
+                              value:true,
+                              offIcon:"toggle-down",
+                              onIcon:"toggle-up",
+                              on:{
+                                'onItemClick': function(id){ 
+                                  if($$('CLTable').isVisible()) {
+                                    $$('CLTable').hide();
+                                    $$('APTable').show();
+                                    $$('hide_ap_button').setValue(1);
+                                  } else {
+                                    $$('CLTable').show();
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          id:"CLTable",
+                          view:"datatable",
+                          columns:[
+                            { id:"SignalLevel",header:"Уровень сигнала", sort:"int",fillspace:true},
+                            { id:"MAC",header:"MAC адрес", sort:"string",fillspace:true},
+                            { id:"SSID",header:"SSID", sort:"string",fillspace:true},
+                            { id:"PacketsCount",header:"Число пакетов",  sort:"int",fillspace:true},
+                            { id:"TimeAppend",header:"Первое появление",  sort:"string",fillspace:true},
+                            { id: "since",  header:"Последняя активность", sort:"string",fillspace:true}
+                          ],
+                          resizeColumn:true
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              id:'emulator_real',
+              cols: [
+                {
+                  id:"ConnectedClientView",
+                  view:"list",
+                  template:"#value#",
+                  data: [
+                    { value:"host1"},
+                    { value:"host2"},
+                    { value:"host3"},
+                    { value:"host1"},
+                    { value:"host2"},
+                    { value:"host3"}
+                  ],
+                  width:250
+                },
+                { view:"resizer" },
+                {
+                  rows: [
+                    {
+                      cols: [
+                        {
+                          view:'label',
+                          label:"Клиенты (0)"
+                        },
+                        {},
+                        {
+                            id: "emulator-hidden-list",
+                            width: 380,
+                            cols: [
+                                {
+                                    view:"button",
+                                    id: "WiFiEmulatorSettings-btn",
+                                    value: "Настройки Wi-Fi эмулятора"
+                                },
+                                {
+                                    view:"button",
+                                    id: "FieldsList-btn",
+                                    value: "Список полей"
+                                }
+                            ]
+                        },
+                        { 
+                          view:"toggle",
+                          width:30,
+                          type:"iconButton",
+                          name:"monbutton",
+                          offIcon:"toggle-left",
+                          onIcon:"toggle-right",
+                          on:{
+                            'onItemClick': function(){
+                                if ($$('emulator-hidden-list').isVisible()){
+                                    $$('emulator-hidden-list').hide();
+                                }
+                                else{
+                                    $$('emulator-hidden-list').show();
+                                }
+                            }
+                          }
+                            
+                        },
+                        { 
+                          view:"button",
+                          width:30,
+                          type:"iconButton",
+                          name:"monbutton",
+                          icon:"filter"
+                        }/*,
+                        { 
+                          view:"toggle",
+                          width:30,
+                          type:"iconButton",
+                          name:"monbutton",
+                          value:true,
+                          offIcon:"toggle-down",
+                          onIcon:"toggle-up"
+                        }*/
+                      ]
+                    },
+                    {
+                      view:"datatable",
+                      columns:[
+                        { id:"siglvl",  header:"Уровень сигнала", sort:"int",fillspace:true},
+                        { id:"name", header:"Имя ТД", sort:"string",fillspace:true},
+                        { id:"mac",  header:"MAC адрес", sort:"string",fillspace:true},
+                        { id:"ch", header:"Канал",  sort:"int",fillspace:true},
+                        { id:"manufactor", header:"Производитель",  sort:"string",fillspace:true},
+                        { id:"packcnt", header:"Число пакетов",  sort:"int",fillspace:true},
+                        { id:"fseen", header:"Первое появление",  sort:"string",fillspace:true},
+                        { id:"lseen", header:"Последнее появление",  sort:"string",fillspace:true}
+                        //<th>Уровень сигнала</th><th>Имя ТД</th><th>MAC адрес</th><th>Канал</th><th>Производитель</th><th>Число пакетов</th><th>Первое появление</th><th>Последнее появление</th>
+                      ],
+                      resizeColumn:true,
+                      fillspace:true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+
+        var real_main = {
+          id:'real_main',
+          rows: [
+            {
+              cols: [
+                real_tabbar,
+                { 
+                  view:"toggle",
+                  width:200,
+                  id:'monbutton',
+                  type:"iconButton",
+                  name:"monbutton", 
+                  offIcon:"pause",
+                  onIcon:"play",
+                  offLabel:"Мониторинг - Выкл",
+                  onLabel:"Мониторинг - Вкл"
+                },
+                { 
+                  view:"toggle",
+                  width:200,
+                  type:"iconButton",
+                  name:"emubutton", 
+                  offIcon:"pause",
+                  onIcon:"play",
+                  offLabel:"Эмулятор - Выкл",
+                  onLabel:"Эмулятор - Вкл"
+                }
+              ]
+            },
+            {
+              //height:3,
+              view:'resizer',
+              disabled:true,
+              //css:"ruler_row"
+            },
+            real_data
+          ]
+        }
+        
+        var report_first_col = {
+            rows: [
+                {
+                    view:'label',
+                    //css:'ruler_row',
+                    label: "Доступные сканирования"
+                },
+                {
+                    id:"Scan_Tree",
+                    view:"tree",
+                    type:"lineTree",
+                    /*template:function(obj, common){
+                        if(obj.$level == 1) {
+                          return common.icon(obj, common) + "<span class='webix_icon fa-wifi'></span>"+"<span>"+obj.value+"</span>";
+                        }
+                        return common.icon(obj, common) + "<span class='webix_icon fa-mobile'></span>"+"<span>"+obj.value+"</span>"; 
+                    },*/
+                    data: [
+                    ]//,
+                    //select:true
+                },
+                {
+                    view: 'label',
+                    label: "Формат отчёта"
+                },
+                {
+                    cols: [
+                        {
+                            rows: [
+                                {
+                                    view: "checkbox",
+                                    id: "pdf_chbx",
+                                    label: "PDF",
+                                    value: 1
+                                },
+                                {
+                                    view: "checkbox",
+                                    id: "doc_chbx",
+                                    label: "DOC",
+                                    value: 0
+                                },
+                                {
+                                    view: "checkbox",
+                                    id: "exel_chbx",
+                                    label: "EXEL",
+                                    value: 0
+                                }
+                            ]
+                        },
+                        {
+                            rows: [
+                                {
+                                    view: "checkbox",
+                                    id: "xml_chbx",
+                                    label: "XML",
+                                    value: 0
+                                },
+                                {
+                                    view: "checkbox",
+                                    id: "rtf_chbx",
+                                    label: "RTF",
+                                    value: 0
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    view: 'label',
+                    label: "Настройка шапки отчёта"
+                },
+                {
+                    id:"ReportTable",
+                    view:"datatable",
+                    columns:[
+                        { id: "ParameterName", header:"Имя параметра", sort:"string",fillspace:true},
+                        { id: "Value",  header:"Значение", sort:"string",fillspace:true}
+                    ],
+                    resizeColumn:true,
+                    fillspace:true
+                },
+                {
+                    cols: [
+                        { 
+                            view:"button",
+                            id: "AddParameter-btn",
+                            value: "Добавить параметр"
+                        },
+                        { 
+                            view:"button",
+                            id: "RemoveParameter-btn",
+                            value: "Удалить параметр"
+                        }
+                    ]
+                },
+                {
+                    height: 5
+                },
+                {
+                    cols: [
+                        { 
+                            view:"button",
+                            id: "CreateReport-btn",
+                            value: "Cоздать отчёт"
+                        },
+                        { 
+                            view:"button",
+                            id: "GetSessions-btn",
+                            value: "Выгрузить сессии"
+                        },
+                        { 
+                            view:"button",
+                            id: "RemoveSessions-btn",
+                            value: "Удалить сессии"
+                        }
+                    ]
+                }
+                
+            ]
+        }
+        
+        var report_main = {
+            id: 'report_main',
+            cols: [
+                report_first_col,
+                { view: "resizer" },
+                { }
+            ]
+        }
+
+        var auto_first_col = {
+            rows: [
+                {
+                    cols: [
+                        {
+                            rows: [
+                                {
+                                    view: "checkbox",
+                                    id: "sound_chbx",
+                                    label: "Включить звуковую индикацию",
+                                    value: 1 
+                                },
+                                {
+                                    view: "checkbox",
+                                    id: "vibro_chbx",
+                                    label: "Включить вибро индикацию",
+                                    value: 1 
+                                },
+                                {
+                                    view: "checkbox",
+                                    id: "light_chbx",
+                                    label: "Включить световую индикацию",
+                                    value: 1 
+                                }
+                            ]
+                        },
+                        {
+                            rows: [
+                                {
+                                    view:"button",
+                                    id: "SaveSettings-btn",
+                                    value: "Сохранить настройки"
+                                },
+                                {
+                                    view:"button",
+                                    id: "DefaultSettings-btn",
+                                    value: "Восстановить умолчания"
+                                },
+                                {
+                                    view:"button",
+                                    id: "WiFiEmulatorSettings-btn",
+                                    value: "Настройки Wi-Fi эмулятора"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: "section",
+                    rows:[
+                        {
+                            view: "label",
+                            label: "Программируемая кнопка"
+                        },
+                        {
+                            cols: [
+                                {
+                            rows: [
+                                {
+                                    view: "label",
+                                    label: "Одиночное нажатие" 
+                                },
+                                {
+                                    view: "label",
+                                    label: "Двойное нажатие" 
+                                },
+                                {
+                                    view: "label",
+                                    label: "Удерживание" 
+                                },
+                                {
+                                    view:"button",
+                                    id: "AllSequences-btn",
+                                    value: "Посмотреть все последовательности"
+                                }
+                            ]
+                        },
+                                {
+                            rows: [
+                                {
+                                    view: "select",
+                                    options:[
+                                        {
+                                            id: 0,
+                                            value: "Выберите последовательность действий"
+                                        }
+                                    ]
+                                },
+                                {
+                                    view: "select",
+                                    options:[
+                                        {
+                                            id: 0,
+                                            value: "Выберите последовательность действий"
+                                        }
+                                    ]
+                                },
+                                {
+                                    view: "select",
+                                    options:[
+                                        {
+                                            id: 0,
+                                            value: "Выберите последовательность действий"
+                                        }
+                                    ]
+                                },
+                                {
+                                    view:"button",
+                                    id: "NewSequence-btn",
+                                    value: "Добавить новую последовательность"
+                                },
+                            ]
+                        }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: "section",
+                    rows: [
+                        {
+                            view: "label",
+                            label: "Вибрация"
+                        },
+                        {
+                            id:"VibroTable",
+                            view:"datatable",
+                            columns:[
+                                { id: "Number", header:"№", sort:"int",fillspace:true},
+                                { id: "Event",  header:"Событие", sort:"string",fillspace:true},
+                                { id: "Indication", header:"Индикация", sort:"string",fillspace:true}
+                            ],
+                            resizeColumn:true,
+                            fillspace:true
+                        },
+                        {
+                            cols: [
+                                {
+                                    view:"button",
+                                    id: "AddScript-btn",
+                                    value: "Добавить сценарий"
+                                },
+                                {
+                                    view:"button",
+                                    id: "ShowIndications-btn",
+                                    value: "Посмотреть индикации"
+                                },
+                                {
+                                    view:"button",
+                                    id: "AddIndication-btn",
+                                    value: "Добавить индикацию"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: "section",
+                    rows: [
+                        {
+                            view: "label",
+                            label: "Звуковая индикация"
+                        },
+                        {
+                            id:"SoundTable",
+                            view:"datatable",
+                            columns:[
+                                { id: "Number", header:"№", sort:"int",fillspace:true},
+                                { id: "Event",  header:"Событие", sort:"string",fillspace:true},
+                                { id: "Indication", header:"Индикация", sort:"string",fillspace:true}
+                            ],
+                            resizeColumn:true,
+                            fillspace:true
+                        },
+                        {
+                            cols: [
+                                {
+                                    view:"button",
+                                    id: "AddScript-btn",
+                                    value: "Добавить сценарий"
+                                },
+                                {
+                                    view:"button",
+                                    id: "ShowIndications-btn",
+                                    value: "Посмотреть индикации"
+                                },
+                                {
+                                    view:"button",
+                                    id: "AddIndication-btn",
+                                    value: "Добавить индикацию"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: "section",
+                    rows: [
+                        {
+                            view: "label",
+                            label: "Цветовая индикация"
+                        },
+                        {
+                            cols: [
+                                {
+                                    view:"button",
+                                    id: "ShowIndications-btn",
+                                    value: "Посмотреть индикации"
+                                },
+                                {
+                                    view:"button",
+                                    id: "AddIndication-btn",
+                                    value: "Добавить индикацию"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        var auto_main = {
+            id: 'auto_main',
+            rows: [
+                {
+                    cols: [
+                        auto_first_col,
+                        { view: "resizer" },
+                        { }
+                    ]
+                }
+            ]
+        }
+        
+        var common_first_col = {
+            rows: [
+                {
+                    view: "label",
+                    label: "Информация об обследовании"
+                },
+                {
+                    rows: [
+                        {
+                             view: "label",
+                             label: "Название файлов обследований"
+                        },
+                        {
+                            cols:[
+                                {
+                                    view: 'label',
+                                    label: "Тут имя"
+                                },
+                                {
+                                    view:"button",
+                                    id: "ChangeName-btn",
+                                    value: "Изменить"
+                                }
+                            ]
+                        },
+                    ]
+                },
+                {
+                    rows: [
+                        {
+                            view: "label",
+                            label: "Настройка информации об обследовании"
+                        },
+                        {
+                            id:"ResearchInfoTable",
+                            view:"datatable",
+                            columns:[
+                                { id: "ParameterName", header:"Имя параметра", sort:"string",fillspace:true},
+                                { id: "Value",  header:"Значение", sort:"string",fillspace:true}
+                            ],
+                            resizeColumn:true,
+                            fillspace:true
+                        },
+                        {
+                             cols:[
+                                {
+                                    view:"button",
+                                    id: "AddParameter4-btn",
+                                    value: "Добавить параметр"
+                                },
+                                {
+                                    view:"button",
+                                    id: "RemoveParameter4-btn",
+                                    value: "Удалить параметр"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    rows: [
+                        {
+                            view: 'label',
+                            label: 'Время'
+                        },
+                        {
+                            view: 'label',
+                            label: "Текущее время: "
+                            //что тут?
+                        },
+                        {
+                            cols:[
+                                {
+                                    view:"button",
+                                    id: "ChangeDate-btn",
+                                    value: "Изменить дату"
+                                },
+                                {
+                                    view:"button",
+                                    id: "ChangeTime-btn",
+                                    value: "Изменить время"
+                                },
+                                {
+                                    view:"button",
+                                    id: "ChangeTimeZone-btn",
+                                    value: "Изменить часовой пояс"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        var common_second_col = {
+            rows: [
+                {
+                    view: "label",
+                    label: "Настройки"
+                },
+                {
+                    rows: [
+                        {
+                            view: 'label',
+                            label: "Профили работы"
+                        },
+                        {
+                            id:"Profile_Tree",
+                            view:"tree",
+                            type:"lineTree",
+                            /*template:function(obj, common){
+                                if(obj.$level == 1) {
+                                  return common.icon(obj, common) + "<span class='webix_icon fa-wifi'></span>"+"<span>"+obj.value+"</span>";
+                                }
+                                return common.icon(obj, common) + "<span class='webix_icon fa-mobile'></span>"+"<span>"+obj.value+"</span>"; 
+                            },*/
+                            data: [
+                            ]//,
+                            //select:true
+                        },
+                        {
+                            cols: [
+                                {
+                                    view:"button",
+                                    id: "LoadProfile-btn",
+                                    value: "Загрузить профиль"
+                                },
+                                {
+                                    view:"button",
+                                    id: "DeleteProfile-btn",
+                                    value: "Удалить профиль"
+                                }
+                            ]
+                        },
+                        {
+                            cols: [
+                                {
+                                    view:"button",
+                                    id: "SaveProfile-btn",
+                                    value: "Сохранить текущий профиль"
+                                },
+                                {
+                                    view:"button",
+                                    id: "DefaultProfile-btn",
+                                    value: "Восстановить умолчания"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    rows: [
+                        {
+                            view: 'label',
+                            label: "Логи работы программы"
+                        },
+                        {
+                            id:"Log_Tree",
+                            view:"tree",
+                            type:"lineTree",
+                            /*template:function(obj, common){
+                                if(obj.$level == 1) {
+                                  return common.icon(obj, common) + "<span class='webix_icon fa-wifi'></span>"+"<span>"+obj.value+"</span>";
+                                }
+                                return common.icon(obj, common) + "<span class='webix_icon fa-mobile'></span>"+"<span>"+obj.value+"</span>"; 
+                            },*/
+                            data: [
+                            ]//,
+                            //select:true
+                        },
+                        {
+                            cols: [
+                                {
+                                    view:"button",
+                                    id: "GetLog-btn",
+                                    value: "Выгрузить логи"
+                                },
+                                {
+                                    view:"button",
+                                    id: "DeleteLog-btn",
+                                    value: "Удалить логи"
+                                }
+                            ]
+                        },
+                        {
+                            cols: [
+                                {
+                                    view:"button",
+                                    id: "SaveChanges4-btn",
+                                    value: "Сохранить изменения"
+                                },
+                                {
+                                    view:"button",
+                                    id: "DefaultSettings4-btn",
+                                    value: "Восстановить умолчания"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        var common_main = {
+            id: 'common_main',
+            rows: [
+                {
+                    cols: [
+                        common_first_col,
+                        { view: "resizer" },
+                        common_second_col
+                    ]
+                }
+            ]
+        }
+        
+        var main_menu_data = {
+          cells:[
+            real_main,
+            auto_main,
+            report_main,
+            common_main
+          ]
+        };
+
+        var status = {
+          //view:'label',
+          //label: "Here will be very informative info."
+        }
+        /*var tabbar = {
+           view:"tabbar", multiview:true, type:"top", options: [
+            { value: 'SSID', id: 'SSIDView'},
+            { value: 'Клиенты', id: 'ClientView'}
+          ]
+        };
+        var data = {
+          cells:[
+            {
+              id:"SSIDView",
+              view:"tree",
+              template:"{common.icon()} <span>#value#</span>",
+              data: [
+                {value:"SSID1",data:[
+                  {value:"host1"},
+                  {value:"host2"},
+                  {value:"host3"}
+                ]},
+                {value:"SSID2",data:[
+                  {value:"host1"},
+                  {value:"host2"},
+                  {value:"host3"}
+                ]}
+              ],
+              select:true
+            },
+            {
+              id:"ClientView",
+              view:"list",
+              template:"#value#",
+              data: [
+                  {value:"host1"},
+                  {value:"host2"},
+                  {value:"host3"},
+                  {value:"host1"},
+                  {value:"host2"},
+                  {value:"host3"}
+              ]
+            }
+            ]
+          };
+          var line1 = { cols:[
+              { 
+                rows:[
+                tabbar,
+                data,
+                ],
+                width:250
+              },
+              { view:"resizer" },
+              { 
+                rows: [
+                {
+                  cols: [
+                    {
+                      view:'label',
+                      label:"Точки доступа (0)"
+                    },
+                    {
+                      view:'label',
+                      label:"Клиенты (0)"
+                    },
+                    {},
+                    {},
+                    { 
+                      view:"toggle",
+                      type:"iconButton",
+                      name:"monbutton", 
+                      offIcon:"pause",
+                      onIcon:"play",
+                      offLabel:"Мониторинг - Выкл",
+                      onLabel:"Мониторинг - Вкл"
+                    }
+                  ]
+                },
+                {
+                  id:"APTable",
+                  view:"datatable",
+                  columns:[
+                    { id: "SignalLevel", header:"Уровень сигнала", sort:"int",fillspace:true},
+                    { id: "SSID",  header:"Имя ТД", sort:"string",fillspace:true},
+                    { id: "MAC",  header:"MAC адрес", sort:"string",fillspace:true},
+                    { id: "Channel",  header:"Канал", sort:"int",fillspace:true},
+                    { id: "Manufactor",  header:"Производитель", sort:"string",fillspace:true},
+                    { id: "PacketsCount",  header:"Число пакетов", sort:"int",fillspace:true},
+                    { id: "TimeAppend",  header:"Первое появление", sort:"string",fillspace:true},
+                    { id: "TimeLast",  header:"Последнее появление", sort:"string",fillspace:true}
+                  ],
+                  resizeColumn:true,
+                  fillspace:true
+                },
+                { view:"resizer" },
+                {
+                  view:"datatable",
+                  columns:[
+                    { header:"Уровень сигнала", sort:"int",fillspace:true},
+                    { header:"Имя ТД", sort:"string",fillspace:true},
+                    { header:"MAC адрес", sort:"string",fillspace:true},
+                    { header:"Канал",  sort:"int",fillspace:true},
+                    { header:"Производитель",  sort:"string",fillspace:true},
+                    { header:"Число пакетов",  sort:"int",fillspace:true},
+                    { header:"Первое появление",  sort:"string",fillspace:true},
+                    { header:"Последнее появление",  sort:"string",fillspace:true}
+                  ],
+                  resizeColumn:true
+                }
+                ]
+              }
+            ]};
+
+          var line2 = { cols:[
+            {
+              id:"ConnectedClientView",
+              view:"list",
+              template:"#value#",
+              data: [
+                  { value:"host1"},
+                  { value:"host2"},
+                  { value:"host3"},
+                  { value:"host1"},
+                  { value:"host2"},
+                  { value:"host3"}
+              ],
+              width:250
+            },
+              { view:"resizer" },
+              { rows: [
+                { cols: [
+                    {
+                      view:'label',
+                      label:"Подключенные клиенты (0)"
+                    },
+                    {},
+                    {},
+                    { 
+                      view:"toggle",
+                      type:"iconButton",
+                      name:"emubutton", 
+                      offIcon:"pause",
+                      onIcon:"play",
+                      offLabel:"Эмулятор - Выкл",
+                      onLabel:"Эмулятор - Вкл"
+                    }
+                  ] },
+                { 
+                  view:"datatable",
+                    columns:[
+                      { id:"siglvl",  header:"Уровень сигнала", sort:"int",fillspace:true},
+                      { id:"name", header:"Имя ТД", sort:"string",fillspace:true},
+                      { id:"mac",  header:"MAC адрес", sort:"string",fillspace:true},
+                      { id:"ch", header:"Канал",  sort:"int",fillspace:true},
+                      { id:"manufactor", header:"Производитель",  sort:"string",fillspace:true},
+                      { id:"packcnt", header:"Число пакетов",  sort:"int",fillspace:true},
+                      { id:"fseen", header:"Первое появление",  sort:"string",fillspace:true},
+                      { id:"lseen", header:"Последнее появление",  sort:"string",fillspace:true}
+                      //<th>Уровень сигнала</th><th>Имя ТД</th><th>MAC адрес</th><th>Канал</th><th>Производитель</th><th>Число пакетов</th><th>Первое появление</th><th>Последнее появление</th>
+                    ],
+                    resizeColumn:true,
+                    fillspace:true
+                }
+              ]}
+            ]};
+
+          line1.type = "line";
+          line2.type = "line";*/
+        webix.ready(function(){
+            
+            webix.ui({
+              view:"layout",
+              type:"space",
+              rows:[
+                {
+                  rows: [
+                    main_menu_tabbar,
+                    main_menu_data,
+                  ]
+                },
+                {
+                  view:'label',
+                  css:'ruler_row',
+                  label: "Here will be very informative info."
+                }
+              ]
+            });
+            
+            //инициализация
+            $$("monitoring-hidden-list").hide();
+            $$("emulator-hidden-list").hide();
+            
+            $$("monbutton").attachEvent("onItemClick", function(data){
+              if($$("monbutton").getValue()=='0'){
+                webix.ajax().post("ajax/updatestate", {mon:'false', emu:'false'}, function(text, data, XmlHttpRequest){
+                });
+              } else {
+                webix.ajax().post("ajax/updatestate", {mon:'true', emu:'false'}, function(text, data, XmlHttpRequest){
+                });
+              }
+            });
+
+            setInterval(function(){
+              if($$("monbutton").getValue() == 1) {
+                webix.ajax().post("ajax/accesspoints", function(text, data, XmlHttpRequest){
+                  data=data.json();
+                  $$("APTable").parse(data['ap_data']);
+                  $$("ap_label").setValue('Точки доступа ('+data['ap_data'].length+')');
+                  $$("CLTable").parse(data['cl_data']);
+                  $$("cl_label").setValue('Клиенты ('+data['cl_data'].length+')');
+                  $$("SSID_list").parse(data['ssids_list']);
+                  $$("SSID_Tree").parse(data['ap_tree']);
+                });
+              }
+            }, 1000);
+        });
+    </script>
+  </body>
+</html>

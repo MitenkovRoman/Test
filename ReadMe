@@ -1,0 +1,7 @@
+Install
+1. Install pip nginx(tested on ubuntu and debian)
+2. Install web.py via pip
+3. Configure nginx in 2 steps:
+3.1. http://server/ points on /path/to/project/html
+3.2. http://server/ajax/ is proxy for http://server:8080/ (8080 - default port for web.py)
+4. Run dynamic/main.py
